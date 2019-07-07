@@ -43,6 +43,8 @@ class FractureNetworks:
         IntersectsLines-- [Intersect Id]Pts ID Table for each intersection, each intersectin line have two ids
         IntersectFracs -- [Intersect Id]Fracture ID Table for each intersection
         FracIntersects -- [Frac Id] Intersections id for each fracture
+        WellFracIntersects -- [Intersect Id] Well id and node id for each well intersection
+        IntersectWellFracs -- [Frac Id] Intersect IDs for each well 
         ClusterFracs   -- [Cluster ID] Fractures id for each cluster
 
         Author:Bin Wang(binwang.0213@gmail.com)
@@ -66,6 +68,7 @@ class FractureNetworks:
         self.IntersectFracs = []
         self.FracIntersects = []
         self.WellFracIntersects = []
+        self.IntersectWellFracs = []
         
         self.ClusterFracs = []
     
@@ -130,6 +133,10 @@ class FractureNetworks:
             for j in range(2):
                 PtsID = self.IntersectsLines[IntID][j]
                 Intersect_vert_3D.append(self.Points[PtsID])
+        
+        #Collect Well node info
+        Well_node_3D= []
+        NumWells=len(self.WellFracIntersects)
         
         return Boundary_vert_3D, Intersect_vert_3D
 
