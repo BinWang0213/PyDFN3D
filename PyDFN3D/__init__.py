@@ -5,6 +5,6 @@ __version__ = '1.0a1.dev0'
 from .DFN_Model import *
 
 #Sub modules
-from . import BEM_Solver
+from . import Flow_Solver
 from . import DFN_Geometry
 from . import Utils
