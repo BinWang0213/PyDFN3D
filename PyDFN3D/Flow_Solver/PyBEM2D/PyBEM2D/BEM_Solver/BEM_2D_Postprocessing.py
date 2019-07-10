@@ -376,14 +376,13 @@ class BEM_2DPostprocess:
         XY[:,1:4]=Y
         return XY
 
-    def plot_Solution_overline(self,Pts0,Pts1,plot=1,func=None):
+    def plot_Solution_overline(self,Pts0,Pts1,NumSamples=100,plot=1,func=None):
         """Line plot solution along LINE(pts0,pts1)
         
         Author:Bin Wang(binwang.0213@gmail.com)
         Date: July. 2017
         """
-        tol=1e-3
-        Pts = EndPointOnLine(Pts0, Pts1, Nseg=100, refinement="linspace")
+        Pts = EndPointOnLine(Pts0, Pts1, Nseg=NumSamples, refinement="linspace")
         
         if(func is None):
             Y = np.array([self.BEMobj.get_Solution(p) for p in Pts])
