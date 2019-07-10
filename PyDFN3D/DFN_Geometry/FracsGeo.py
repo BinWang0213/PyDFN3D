@@ -20,7 +20,7 @@ import os
 
 from PyDFN3D.Utils.Geometry import RotatePlanePts,LineLineDist_3D
 
-from .IO_PyGeoMesh import read_PyGeoMeshFile,write_PyGeoMeshFile
+from .IO_PyGeoMesh_dat import read_PyGeoMeshFile_dat,write_PyGeoMeshFile_dat
 
 class FractureNetworks:
     """Contains Fracture Networks Geometry and Intersection info"""
@@ -43,8 +43,8 @@ class FractureNetworks:
         IntersectsLines-- [Intersect Id]Pts ID Table for each intersection, each intersectin line have two ids
         IntersectFracs -- [Intersect Id]Fracture ID Table for each intersection
         FracIntersects -- [Frac Id] Intersections id for each fracture
-        WellFracIntersects -- [Intersect Id] Well id and node id for each well intersection
-        IntersectWellFracs -- [Frac Id] Intersect IDs for each well 
+        WellFracIntersects -- [Well Id] Frac id and node id for each well 
+        FracsIntersectWell -- [Frac Id] Well id and node id for each fracture
         ClusterFracs   -- [Cluster ID] Fractures id for each cluster
 
         Author:Bin Wang(binwang.0213@gmail.com)
@@ -68,7 +68,8 @@ class FractureNetworks:
         self.IntersectFracs = []
         self.FracIntersects = []
         self.WellFracIntersects = []
-        self.IntersectWellFracs = []
+        self.FracsIntersectWell = []
+        self.Intersection_table = []
         
         self.ClusterFracs = []
     
@@ -90,7 +91,7 @@ class FractureNetworks:
 
         #Read fracs from file
         if(ftype=='PyGeoMesh'):#This is native format which includes all information needed
-            read_PyGeoMeshFile(self, fname,delimiter=' ',commenter='--',blockender='/')
+            read_PyGeoMeshFile_dat(self, fname,delimiter=' ',commenter='--',blockender='/')
 
     def writeFracs(self,fname,ftype='PyGeoMesh'):
         """ Write fracture networks from 3rdparty tool
@@ -104,7 +105,7 @@ class FractureNetworks:
 
         #Write fracs to file
         if(ftype=='PyGeoMesh'):
-            write_PyGeoMeshFile(self, path,delimiter=' ',commenter='--',blockender='/')
+            write_PyGeoMeshFile_dat(self, path,delimiter=' ',commenter='--',blockender='/')
 
     #*---------------------------------------- 
     #*          Fracture Data access
@@ -136,11 +137,16 @@ class FractureNetworks:
         
         #Collect Well node info
         Well_node_3D= []
-        NumWells=len(self.WellFracIntersects)
+        NumWellNodes=len(self.FracsIntersectWell[FracID])
+        for i in range(NumWellNodes):
+            WellID=self.FracsIntersectWell[FracID][i][0]
+            PtsID=self.FracsIntersectWell[FracID][i][1]
+            #print(WellID,PtsID)
+            Well_node_3D.append(self.Points[PtsID])
         
-        return Boundary_vert_3D, Intersect_vert_3D
+        return Boundary_vert_3D, Intersect_vert_3D, Well_node_3D
 
-    def Get2DFractureGeo(self, FracID):
+    def Get2DFracGeo(self, FracID):
         ''' Get a projected 2D fracture info from 3D fracture
             http://alghalandis.net/products/adfne/adfne15
         
@@ -157,16 +163,14 @@ class FractureNetworks:
 
         RotateMat = []
 
-        #Collect fracture polygon vertex & Trace vetex info
-        Boundary_vert_3D, Intersect_vert_3D=self.Get3DFracGeo(FracID)
+        #? Collect fracture polygon vertex, Trace vertex and well node info
+        Boundary_vert_3D, Intersect_vert_3D, Well_node_3D=self.Get3DFracGeo(FracID)
 
-        #Rotate into 2D
+        #? Rotate into 2D
         # Plane_Coords,Query_Points,TargetPlane
-        Boundary_vert_2D = RotatePlanePts(
-            Boundary_vert_3D, Boundary_vert_3D, '2D')        
-
-        Intersect_vert_2D = RotatePlanePts(
-            Boundary_vert_3D, Intersect_vert_3D, '2D')
+        Boundary_vert_2D = RotatePlanePts(Boundary_vert_3D, Boundary_vert_3D, '2D')        
+        Intersect_vert_2D = RotatePlanePts(Boundary_vert_3D, Intersect_vert_3D, '2D')
+        Well_node_2D = RotatePlanePts(Boundary_vert_3D, Well_node_3D, '2D')
 
         #Debug
         #check1 = RotatePlanePts(Boundary_vert_3D, Boundary_vert_2D, '3D')
@@ -174,7 +178,7 @@ class FractureNetworks:
         #print(np.sum(np.array(check1)-np.array(Boundary_vert_3D)))
         #print(np.sum(np.array(check2) - np.array(Intersect_vert_3D)))
         
-        #Re-arrange vertex info into 2D format
+        #? Re-arrange vertex info into 2D BEM flow solver format
         for i in range(self.NumPtsFrac[FracID]):
             Boundary_vert_2D[i] = Boundary_vert_2D[i][:-1]
         # Boundary Element Anticlock-wise, ADFNE clockwise, 
@@ -185,7 +189,7 @@ class FractureNetworks:
         NumFracTraces = len(self.FracIntersects[FracID])
         for i in range(NumFracTraces):
             temp = []
-            for j in range(2):
+            for j in range(2):#1 trace has 2 nodes
                 temp.append(Intersect_vert_2D[i * 2 + j][:-1])
             Trace_vert_2D.append(temp)
         
@@ -193,8 +197,59 @@ class FractureNetworks:
         if(np.isnan(np.sum(Trace_vert_2D))):
             print('bad boy',FracID)
         
+        for i in range(len(Well_node_2D)):
+            Well_node_2D[i] = Well_node_2D[i][:-1]
         
-        return Boundary_vert_2D, Trace_vert_2D
+        #print(Boundary_vert_2D)
+        #print(Trace_vert_2D)
+        #print(Well_node_2D)
+
+        return Boundary_vert_2D, Trace_vert_2D, Well_node_2D
+    
+    def get2DFracPts(self,FracID,QueryPts_3D=[]):
+        ''' Get a projected 2D fracture pts from 3D Pts
+        
+        Arguments
+        ---------
+        3D            -- Original 3D Coords
+        2D            -- Rotated 2D Coords
+
+        Author:Bin Wang(binwang.0213@gmail.com)
+        Date: July. 2019
+        '''
+        Boundary_vert_3D, Intersect_vert_3D, Well_node_3D=self.Get3DFracGeo(FracID)
+        Pts2D = np.asarray(RotatePlanePts(Boundary_vert_3D, QueryPts_3D, '2D'))
+        
+        return Pts2D
+
+    #*---------------------------------------- 
+    #*          Fracture Index query
+    #*----------------------------------------
+
+    def getFracsIntersectTable(self):
+        '''Get the fracture connection table for each intersection 
+        
+        Fracture A connect with Fracture B through its local edge A and local edge B
+        Intersection_table= [(FracA,FracB,localEdgeIDA,localEdgeIDB)]
+
+        Arguments
+        ---------
+        FracID -- Global Fracture ID
+        IntID  -- Globa Intersection ID
+
+        Author:Bin Wang(binwang.0213@gmail.com)
+        Date: July. 2019
+        '''
+        if(len(self.Intersection_table)==0): #calculate it when necessary
+            for i in range(self.NumInts):
+                FracID = self.IntersectFracs[i][0]
+                FracID_connect = self.IntersectFracs[i][1]
+                EdgeID = self.GetFracIntersectLocalEdgeID(FracID,i)
+                EdgeID_connect = self.GetFracIntersectLocalEdgeID(FracID_connect, i)
+                self.Intersection_table.append([FracID,FracID_connect,EdgeID,EdgeID_connect])
+        
+        return self.Intersection_table
+
 
     def GetIntersectFracID(self, IntID, FracID=-1):
         '''Get the FracID based on intersection id and exclude the offered IntID (optional)
