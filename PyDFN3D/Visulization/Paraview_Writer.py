@@ -27,7 +27,7 @@ class Paraview_Writer:
     def __init__(self, fname=None,folder="Results"):
     
         #Set up the output folder
-        self.fname=fname
+        self.fname_base=os.path.splitext(os.path.basename(fname))[0]
         self.folder=folder
 
         self.fname_geo = None
@@ -48,8 +48,8 @@ class Paraview_Writer:
         self.meshio_ptsdata  = None #point-wise data
 
     def GetFilePath(self):
-        self.fname_mesh = os.path.join(self.folder, self.fname + "_solution.vtu")
-        self.fname_geo = os.path.join(self.folder, self.fname + "_DFN.vtp")
+        self.fname_mesh = os.path.join(self.folder, self.fname_base + "_solution.vtu")
+        self.fname_geo = os.path.join(self.folder, self.fname_base + "_DFN.vtp")
 
     def SetInputMesh(self,mesh_input_fname):
         self.DFN_MeshData=read_PyGeoMeshFile_msh(mesh_input_fname)

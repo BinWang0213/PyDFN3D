@@ -120,7 +120,8 @@ class Flow_Solver:
 
         Author:Bin Wang(binwang.0213@gmail.com)
         Date: July. 2019
-        '''
+        '''     
+        NumPts=0   
         Pressures = np.zeros(DFN_Mesh.NumOfPts)
         for fi in range(DFN_Mesh.NumFracs):
             Pts3D=DFN_Mesh.Points[DFN_Mesh.FracPts[fi]]
@@ -128,7 +129,13 @@ class Flow_Solver:
             for pi in range(len(P)):
                 PtsID=DFN_Mesh.FracPts[fi][pi]
                 Pressures[PtsID]=P[pi]
-        
+                NumPts+=1
+
+        #Assign some value to ghost pts, such as pts in well segments
+        max_p=max(Pressures)
+        Pressures[Pressures == 0.0] = max_p
+        print('Pressure Range=',min(Pressures),max(Pressures))
+
         return Pressures
 
     def showMesh(self,fracID=0):
