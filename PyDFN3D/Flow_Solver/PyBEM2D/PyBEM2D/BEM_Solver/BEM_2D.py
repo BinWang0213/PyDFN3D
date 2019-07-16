@@ -108,13 +108,13 @@ class BEM2D:
         else:
             self.TraceOn = 1
 
-    def plot_Mesh(self, Annotation=1,legend=1,node_size=5,img_fname=None):
+    def plot_Mesh(self, Annotation=1,legend=1,node_size=5,scale=1.0,img_fname=None):
         """Plot BEM Mesh
 
         Author:Bin Wang(binwang.0213@gmail.com)
         Date: July. 2017
         """
-        self.Mesh.plot_Mesh(Annotation,legend,node_size,img_fname)
+        self.Mesh.plot_Mesh(Annotation,legend,node_size,scale,img_fname)
 
     ###########Boundary Conditions Module#################
     def set_BoundaryCondition(self,DirichletBC=[],NeumannBC=[],RobinBC=[],update=0,mode=0,Robin_a=1,debug=1):

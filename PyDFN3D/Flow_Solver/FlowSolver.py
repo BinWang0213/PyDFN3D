@@ -138,7 +138,7 @@ class Flow_Solver:
 
         return Pressures
 
-    def showMesh(self,fracID=0):
+    def showMesh(self,fracID=0,scale=1.0):
         '''Plot/output the discretized fracture domain if possibile 
 
         Author:Bin Wang(binwang.0213@gmail.com)
@@ -146,7 +146,7 @@ class Flow_Solver:
         '''
 
         if(self.solver_type=='BEM'): #Each fracture domain can be plotted without Paraview
-            self.SubProblems[fracID].plot_Mesh()
+            self.SubProblems[fracID].plot_Mesh(scale=scale)
 
     def showSolution(self,fracID=0,p_range=None,v_range=None):
         '''Plot/output the solution if possibile 

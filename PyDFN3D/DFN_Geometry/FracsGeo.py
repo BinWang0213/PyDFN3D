@@ -302,4 +302,60 @@ class FractureNetworks:
         #    else:
         #        print("Error! Intersection is not belongs this Fracture")
 
-    
+    def GetWellsIntersectTable(self,WellID):
+        '''Get the frac connection table for each well 
+        
+        Well A connect with Fracture B through its local bd A
+        Intersection_table= [(FracID,localEdgeID),...]
+
+        Arguments
+        ---------
+        WellID -- Global Fracture ID
+
+        Author:Bin Wang(binwang.0213@gmail.com)
+        Date: July. 2019
+        '''
+        FracIDs=[ids[0] for ids in self.WellFracIntersects[WellID]]
+        FracIDs_unique = [x for i, x in enumerate(FracIDs) if i == FracIDs.index(x)]
+
+        Table=[]
+        for fracID in FracIDs_unique:
+            LocalBDIDs=self.GetFracWellIntersectLocalBDID(fracID,WellID)
+            #print(LocalBDIDs)
+            if(LocalBDIDs not in Table):#One well may have more intersection in a frac
+                Table.append((fracID,LocalBDIDs))
+        
+        return Table
+
+    def GetFracWellIntersectLocalBDID(self,FracID,WellID):
+        '''Get the Well Intersection Local Boundary ID on a Fracture
+
+        Default Edge ID ordering:
+        Boundary Edge (1,2,3,4...) Intersection Edge (5,6,7...) Well Node (8,9,...)
+
+        Arguments
+        ---------
+        FracID -- Global Fracture ID
+        WellID  -- Globa Well ID
+
+        Author:Bin Wang(binwang.0213@gmail.com)
+        Date: July. 2019
+        '''
+        NumBoundaryEdge = len(self.Fractures[FracID])
+        NumTraces=len(self.FracIntersects[FracID])
+        
+        Frac_WellIDs=self.FracsIntersectWell[FracID] # All WellID_NodeID pairs in this frac
+        WellIDs=self.WellFracIntersects[WellID] # All FracID_NodeID pairs for this well
+
+        WellLocalIdx=[]
+        for id in WellIDs:
+            WellID_NodeID=[WellID,id[1]]
+            #print(WellID_NodeID)
+            if(WellID_NodeID in Frac_WellIDs):
+                WellLocalIdx.append(Frac_WellIDs.index(WellID_NodeID))
+
+
+        #print(NumBoundaryEdge,NumTraces,NumTraces+NumBoundaryEdge)
+        #print(WellLocalIdx)
+
+        return [NumTraces+NumBoundaryEdge+id for id in WellLocalIdx]

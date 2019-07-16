@@ -343,7 +343,7 @@ class BEM_2DMesh:
 
 
     ###########Visulation Module################
-    def plot_Mesh(self,Annotation=1,legend=1,node_size=5,img_fname=None):
+    def plot_Mesh(self,Annotation=1,legend=1,node_size=5,scale=1.0,img_fname=None):
         """Plot BEM Mesh
 
         Author:Bin Wang(binwang.0213@gmail.com)
@@ -359,7 +359,7 @@ class BEM_2DMesh:
 
         space = 0.1 * calcDist((x_min, y_min), (x_max, y_max))
 
-        plt.figure(figsize=(5, 4))
+        plt.figure(figsize=(5*scale, 4*scale))
         #plt.axes().set(xlim=[x_min - space, x_max + space],
         #               ylim=[y_min - space, y_max + space], aspect='equal')
         plt.axes().set(aspect='equal')
@@ -430,12 +430,12 @@ class BEM_2DMesh:
                 Node, Node_next = self.Pts_t[i][0], self.Pts_t[i][1]
 
                 rightmiddle = line_leftright(Node, Node_next, space * 0.3)[1]
-                plt.text(*rightmiddle.T, "%s" % (index), fontsize=14)
+                plt.text(*rightmiddle.T, "%s" % (index),color='gray', fontsize=14)
                 index+=1
             
             for i in range(self.Num_source):
                 Node= np.asarray(self.Pts_s[i])*1.03
-                plt.text(*Node.T, "%s" % (index), fontsize=14)
+                plt.text(*Node.T, "%s" % (index), color='r',fontsize=14)
                 index+=1
 
 
