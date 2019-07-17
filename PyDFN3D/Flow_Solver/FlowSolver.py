@@ -111,6 +111,8 @@ class Flow_Solver:
             P.append(puv[0])
             Vx.append(puv[1])
             Vy.append(puv[2])
+            if(puv[0]<0):
+                print(fracID,Pts,puv)
 
         return np.asarray(P),np.asarray(Vx),np.asarray(Vy)
     

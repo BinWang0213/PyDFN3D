@@ -70,6 +70,10 @@ class FractureNetworks:
         self.WellFracIntersects = []
         self.FracsIntersectWell = []
         self.Intersection_table = []
+
+        #Frac properties
+        self.perm_array=[]
+        self.aperature_array=[]
         
         self.ClusterFracs = []
     

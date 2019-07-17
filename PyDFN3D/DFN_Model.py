@@ -22,6 +22,7 @@ class DFN_Model:
         self.fname=''
         self.FracNets=FractureNetworks()
         self.FlowSolver=None
+
     
     def loadDFN(self,fname,ftype='PyGeoMesh'):
         """Load DFN from file
@@ -99,6 +100,10 @@ class DFN_Model:
         if(perm is not None): perm_array=[perm]*self.FracNets.NumFracs
         if(aperature is not None): aperature_array=[aperature]*self.FracNets.NumFracs
         
+        #Save perm and aperature array into FracNet and used for later ouput
+        self.FracNets.perm_array=perm_array
+        self.FracNets.aperature_array=aperature_array
+
         self.FlowSolver.setFracProps(perm_array,aperature_array)
     
     def solveFlow(self,max_iters=100,tolerance=1e-5):

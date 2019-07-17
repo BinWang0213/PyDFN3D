@@ -68,6 +68,9 @@ class vtkDFNWriter:
                     j, self.DFN_GeoData.Fractures[i][j])
             Fractures.InsertNextCell(polygon)
 
+        self.DFNData.SetPoints(self.points)
+        self.DFNData.SetPolys(Fractures)
+
         #Append the Fracture ID into Output
         FracID=vtk.vtkIntArray()
         FracID.SetNumberOfValues(self.DFN_GeoData.NumFracs)
@@ -75,11 +78,20 @@ class vtkDFNWriter:
         FracID.SetName("FractureID")
         for i in range(self.DFN_GeoData.NumFracs):
             FracID.SetValue(i,i)
-
-        self.DFNData.SetPoints(self.points)
-        self.DFNData.SetPolys(Fractures)
+        
         self.DFNData.GetCellData().SetScalars(FracID)
         self.DFNData.Modified()
+
+        #Append frac props if applicable
+        if(len(self.DFN_GeoData.perm_array)>0):
+            Perm=vtk_np.numpy_to_vtk(num_array=self.DFN_GeoData.perm_array, deep=True, array_type=vtk.VTK_FLOAT)
+            Perm.SetName('Permeability (m^2)')
+            self.DFNData.GetCellData().AddArray(Perm)
+        
+        if(len(self.DFN_GeoData.aperature_array)>0):
+            Aperature=vtk_np.numpy_to_vtk(num_array=self.DFN_GeoData.aperature_array, deep=True, array_type=vtk.VTK_FLOAT)
+            Aperature.SetName('Aperature (m)')
+            self.DFNData.GetCellData().AddArray(Aperature)
 
     def Build_DFNIntersection(self):
         #Intersection Lines
@@ -102,6 +114,8 @@ class vtkDFNWriter:
         self.DFNIntData.SetLines(Intersections)
         self.DFNIntData.GetCellData().SetScalars(IntersectionID)
         self.DFNIntData.Modified()
+
+
 
     def Write(self):
         basename=os.path.splitext(os.path.basename(self.fname))[0]
