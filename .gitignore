@@ -103,3 +103,7 @@ venv.bak/
 # mypy
 .mypy_cache/
 *.asv
+Publications/DFN.zip
+Publications/Notes_WangEtAlii19.pdf
+DFN.zip
+Examples/.ipynb_checkpoints/SimpleDFNs-checkpoint.ipynb
