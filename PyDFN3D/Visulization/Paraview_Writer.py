@@ -16,8 +16,10 @@
 
 import numpy as np
 import os
-from meshio import vtu_io
+#from meshio import vtu_io
 from meshio import Mesh
+
+import meshio
 
 #DFN VTK Writer
 from .vtkDFNWriter import vtkDFNWriter
@@ -84,7 +86,7 @@ class Paraview_Writer:
             meshio_cells = {'triangle': self.DFN_MeshData.Elements}
             meshio_points = self.DFN_MeshData.Points
             mesh=Mesh(meshio_points,meshio_cells,point_data=self.meshio_ptsdata,cell_data=self.meshio_celldata)
-            vtu_io.write(self.fname_mesh, mesh)
+            meshio.vtu.write(self.fname_mesh, mesh)
             print("[Output] Saved VTK mesh and solution file %s) !" % (self.fname_mesh))
             #return self.fname_mesh
 

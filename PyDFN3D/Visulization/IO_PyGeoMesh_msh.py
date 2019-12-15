@@ -1,8 +1,9 @@
 import numpy as np
 
 try:
-    from meshio import msh_io
-    from meshio import vtu_io
+    import meshio
+    #from meshio import msh_io
+    #from meshio import vtu_io
 except ImportError:
     import warnings
     warnings.warn("No mesh-io module loaded. Please download from Github @ nschloe/meshio")
@@ -40,7 +41,7 @@ def read_PyGeoMeshFile_msh(fname):
     """
 
     #Read Gmsh *.msh data using meshio
-    mesh = msh_io.read(fname)
+    mesh = meshio.gmsh.read(fname)
     pts=mesh.points
     cells=mesh.cells
     cell_info=mesh.cell_data
