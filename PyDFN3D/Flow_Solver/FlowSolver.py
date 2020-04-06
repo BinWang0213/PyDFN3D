@@ -80,7 +80,7 @@ class Flow_Solver:
             for fi in range(self.NumFracs):
                 self.SubProblems[fi].SetProps(h=aperature_array[fi],k=perm_array[fi],miu=0.001)
     
-    def solve(self,FracNets,max_iters=100,tolerance=1e-5):
+    def solve(self,FracNets,max_iters=100,tolerance=1e-5,parallel=False):
         '''solve the flow based on solver given
         
         DDM solver requires connection table to link all subdomains together
@@ -95,7 +95,8 @@ class Flow_Solver:
         if(self.DDM):
             Intersection_table=FracNets.getFracsIntersectTable()
             DDM_solver=bem_solver.DDM_Solver(BEMobj=self.SubProblems,Intersection=Intersection_table,plot_mesh=0)
-            DDM_solver.Solve_Iter(Method="P-DD",max_iters=max_iters,TOL=tolerance,alpha=0.5,opt=1) #P-DD algorithm
+            DDM_solver.Solve_Iter(Method="P-DD",max_iters=max_iters,TOL=tolerance,alpha=0.5,opt=1,parallel=parallel) #P-DD algorithm
+
 
     def getFracPtsSols(self,FracNets,fracID=0,FracPts3D=[]):
         '''Get the pressure and velocity solution on a specific fracture

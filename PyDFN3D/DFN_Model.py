@@ -106,13 +106,13 @@ class DFN_Model:
 
         self.FlowSolver.setFracProps(perm_array,aperature_array)
     
-    def solveFlow(self,max_iters=100,tolerance=1e-5):
+    def solveFlow(self,max_iters=100,tolerance=1e-5,parallel=False):
         """Solve the flow based on given parameters
 
         Author:Bin Wang(binwang.0213@gmail.com)
         Date: July. 2019
         """
-        self.FlowSolver.solve(self.FracNets,max_iters,tolerance)
+        self.FlowSolver.solve(self.FracNets,max_iters,tolerance,parallel)
     
     def writeDFN(self,fname='Case1.vtp'):
         """write DFN geometry vtk file for visulization

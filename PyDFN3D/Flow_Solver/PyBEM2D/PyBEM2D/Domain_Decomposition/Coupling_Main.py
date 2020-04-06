@@ -179,17 +179,26 @@ class DDM_Solver:
         Author:Bin Wang(binwang.0213@gmail.com)
         Date: April. 2020
         """
+        print("[PyBEM2D] Parallel LU Solver Enabled!")
         #Assemble linear system for BEM
+        As=[]
         for domain in self.BEMobjs:
             A,b,B=domain.AssembleMatrix()
             #Compute LU factorization at the beginning
+            As.append(A)    
             self.LU_pivs.append(lu_factor(A))
             self.bs.append(b)
             self.Bs.append(B)
         
+        debug=0
+        if(debug==1):
+            np.save('As.npy',np.array(As))
+            np.save('PU_pivs.npy',np.array(self.LU_pivs))
+            np.save('bs.npy',np.array(self.bs))
+
         #Set disable mkl backend multithreading
         mkl.set_num_threads(1)
-        #print(self.bs,self.Bs,mkl.set_num_threads(1))
+        print('CPU Threads=',mkl.set_num_threads(1))
 
     def LUSolve(self,parallel=True):
         """LU solver support multi-threading parallel
@@ -199,6 +208,13 @@ class DDM_Solver:
         Author:Bin Wang(binwang.0213@gmail.com)
         Date: April. 2020
         """
+        debug=0
+        if(debug==1):
+            np.save('PU_pivs.npy',np.array(self.LU_pivs))
+            np.save('bs.npy',np.array(self.bs))
+            #print(self.LU_pivs[-1],self.bs[-1])
+            #print(self.LU_pivs[-1].shape,self.bs[-1].shape)
+
         if(parallel==True):
             Xs=self.pool.starmap(lu_solve, zip(self.LU_pivs, self.bs))   
         else:
