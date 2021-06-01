@@ -43,8 +43,8 @@ def read_PyGeoMeshFile_msh(fname):
     #Read Gmsh *.msh data using meshio
     mesh = meshio.gmsh.read(fname)
     pts=mesh.points
-    cells=mesh.cells
-    cell_info=mesh.cell_data
+    cells=mesh.cells_dict
+    cell_info=mesh.cell_data_dict
     phys_names=mesh.field_data
     #pts, cells, _, cell_info, phys_names
     # Conver meshio_physname into [MarkerID,MarkerName] pair
@@ -60,7 +60,7 @@ def read_PyGeoMeshFile_msh(fname):
     MeshData.NumOfElements=len(MeshData.Elements)
     
     #Triangle Marker IDs, fracture plane
-    MeshData.FracMarkerID = cell_info['triangle']['gmsh:physical']
+    MeshData.FracMarkerID = cell_info['gmsh:physical']['triangle']
 
     #Create MarkerName->MarkerID pair and count total number of fracs
     MeshData.FracName2Marker={}

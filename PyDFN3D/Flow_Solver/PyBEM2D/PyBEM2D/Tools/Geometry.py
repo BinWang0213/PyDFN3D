@@ -535,28 +535,31 @@ def Interp_Nonconforming(Pts_query,Pts,Vals,order=1,tol=1e-7):
     
     for i in range(Num_query):#For each query points
         for j in range(Num_element):
+            pts_query = np.array(Pts_query[i])
+
             if(order==0):#constant interpolation
                 Pts_a=Pts[j]
                 Pts_b=Pts[j+1]
-                if(point_on_line(Pts_query[i],Pts_a,Pts_b,tol)):#Found the element it belongs to
+
+                if(point_on_line(pts_query,Pts_a,Pts_b,tol)):#Found the element it belongs to
                     #ShapeFunc_Interpolation1([0.2,0.3],Ele_Pts)
                     Vals_interp[i]=Vals[j]
 
             if(order==1):#linear interpolation
                 Pts_a=Pts[j]
                 Pts_b=Pts[j+1]
-                if(point_on_line(Pts_query[i],Pts_a,Pts_b,tol)):#Found the element it belongs to
+                if(point_on_line(pts_query,Pts_a,Pts_b,tol)):#Found the element it belongs to
                     #ShapeFunc_Interpolation1([0.2,0.3],Ele_Pts)
-                    phi=ShapeFunc_Weight(Pts_query[i],Pts_a,Pts_b,order=order)
+                    phi=ShapeFunc_Weight(pts_query,Pts_a,Pts_b,order=order)
                     Vals_interp[i]=phi[0]*Vals[j]+phi[1]*Vals[j+1]
                     
             if(order==2):#quadratic interpolation
                 Pts_a=Pts[2*j]
                 Pts_c=Pts[2*j+1]
                 Pts_b=Pts[2*j+2]
-                if(point_on_line(Pts_query[i],Pts_a,Pts_b,tol)):#Found the element it belongs to
+                if(point_on_line(pts_query,Pts_a,Pts_b,tol)):#Found the element it belongs to
                     #ShapeFunc_Interpolation1([0.2,0.3],Ele_Pts)
-                    phi=ShapeFunc_Weight(Pts_query[i],Pts_a,Pts_b,order=order)
+                    phi=ShapeFunc_Weight(pts_query,Pts_a,Pts_b,order=order)
                     Vals_interp[i]=phi[0]*Vals[2*j]+phi[1]*Vals[2*j+1]+phi[2]*Vals[2*j+2]
     return Vals_interp
 
