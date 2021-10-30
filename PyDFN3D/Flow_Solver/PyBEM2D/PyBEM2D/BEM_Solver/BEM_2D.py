@@ -22,7 +22,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
-from scipy.linalg import lu_factor,lu_solve
 
 #[BEM Elements]
 from .Elements.BEM_Elements import BEM_element
@@ -210,6 +209,11 @@ class BEM2D:
                             elif(mode==1):                                    
                                 bd_values=self.Mesh.bd2element(self.TypeE_trace,eleid=j,node_values=BCs[i][1])                                
                                 self.BEs_trace[tID][eID].set_BC(BCid,bd_values,Robin_a,mode=1)
+                            elif(mode=='func'):
+                                Pts=self.Mesh.getTraceEleNodeCoords(tID,eID)
+                                func = BCs[i][1]
+                                bd_values = [func(xy) for xy in Pts]
+                                self.BEs_trace[tID][eID].set_BC(BCid,bd_values,Robin_a,mode=1)
                     
                     #Source BC
                     if(bd_markerID>self.Mesh.SourceStartID-1):#This is a source 
@@ -274,9 +278,7 @@ class BEM2D:
         #Ab = build_matrix_trace(self.BEs_edge,self.BEs_trace, self.Mesh, DDM, AB)  # matrix AB
         Ab = build_matrix_all(self.BEs_edge,self.BEs_trace,self.BEs_source,self.Mesh, DDM, AB)
         if(debug): print("[Solution] Solving problem...", end='')
-        #X = np.linalg.solve(Ab[0], Ab[1])  # linear solution X
-        LU_piv=lu_factor(Ab[0])
-        X=lu_solve(LU_piv,Ab[1])
+        X = np.linalg.solve(Ab[0], Ab[1])  # linear solution X
         if(debug): print("Done")
         # assign solution back to element class
         #solution_allocate_trace(self.BEs_edge, self.BEs_trace,self.Mesh, X, debug)
