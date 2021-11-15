@@ -105,13 +105,15 @@ _params = {'font.family': 'sans-serif',
            # 0 will make line-type markers, such as '+', 'x', invisible
            }
 
-linestyles = ['-', '--', ':','-.' ,'-','-.','-']
+linestyles = ['-.','-', '--', '-',':' ,'-','-.','-']
 colors = ['b', 'r','k', 'g', 'c','m','tab:pink']
 TabColor=['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
 markers=['o', 's', 'v', '^', 'D', '<', '>', 'p', 'h']
 
 def plotTables(X,Y,XLable='',YLabel='',DataNames=[],Title='',
-               Xlim=None,Ylim=None, subplots=[111],RegionShade=None, Alpha=[],LineWidth=[],Colors=[],legendOut=False,
+               Xlim=None,Ylim=None, subplots=[111],RegionShade=None, 
+               markEvery=None,
+               Alpha=[],LineWidth=[],Colors=[],legendOut=False,
                MarkerSize=[],InvertY=False,logXY=False,logX=False,logY=False,img_fname=None):
     #http://www.scipy-lectures.org/intro/matplotlib/matplotlib.html
 
@@ -146,6 +148,7 @@ def plotTables(X,Y,XLable='',YLabel='',DataNames=[],Title='',
         x = np.array(X[i])
 
         Space =max(1,int(len(x) / 10000))
+        if(markEvery): Space = markEvery 
         if(len(subplots)>1):
             fig.add_subplot(subplots[i])
         plt.plot(x, y, color=Colors[i],linestyle=linestyles[i],marker=markers[i],alpha=Alpha[i],mfc='none',

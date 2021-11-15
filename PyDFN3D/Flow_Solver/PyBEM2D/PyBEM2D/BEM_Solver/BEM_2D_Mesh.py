@@ -15,6 +15,7 @@
 #########################################################################
 
 
+from threading import Condition
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -155,7 +156,7 @@ class BEM_2DMesh:
     def set_Mesh(self,Pts_e=[],Pts_t=[],Pts_s=[],
                       h_edge=0.1,h_trace=0.1,
                       Ne_edge=None,Ne_trace=None,
-                      Type='Quad',mode=0,geo_check=True):
+                      Type='Quad',mode=0,split_edge=True,split_trace=True):
         """Create BEM mesh based on either number of element or length of element
            Support for:
            1. Constant element,linear element and Quadratic element
@@ -178,8 +179,11 @@ class BEM_2DMesh:
         Updated: Bin Wang @ June. 2019, point source
         """
         #Check intersection segments
-        if(geo_check): Pts_e, Pts_t = self.Split_ByIntersections(Pts_e, Pts_t)
-        
+        #if(geo_check): Pts_e, Pts_t = self.Split_ByIntersections(Pts_e, Pts_t)
+        if(split_edge): Pts_e = self.Split_EdgeTrace(Pts_e,Pts_t)
+        if(split_trace): Pts_t = self.Split_TraceTrace(Pts_t)
+        self.TraceOpenEnds = self.checkOpenEnds(Pts_e,Pts_t)
+
         #Collect basic geometric info
         self.Pts_e=Pts_e
         self.Pts_t=Pts_t
@@ -244,8 +248,8 @@ class BEM_2DMesh:
         if (self.h_trace != None and len(Pts_t)!=0):
             self.TraceOn=1 #
             #print('We have trace')
-            for i in range(self.Num_trace):
-                Node,Node_next=self.Pts_t[i][0],self.Pts_t[i][1]
+            for ti in range(self.Num_trace):
+                Node,Node_next=self.Pts_t[ti][0],self.Pts_t[ti][1]
                 Ne_trace=int(np.ceil(calcDist(Node,Node_next)/self.h_trace))
                 self.NumE_t.append(Ne_trace)
                 
@@ -253,6 +257,13 @@ class BEM_2DMesh:
                 added_nodes=self.Append_Line(Node,Node_next,Ne_trace,temp_trace,
                                              bd_marker=bd_marker_id, 
                                              Type=Type)#, refinement="cosspace")  # fracture always 0 flux on edge
+                #Using continous element on open trace edge (significantly improve the accurancy)
+                for ei,end in enumerate(self.TraceOpenEnds[ti]):
+                    if(np.any(end)):
+                        print(f"Trace {ti} has open ends",self.TraceOpenEnds[ti])
+                        if(ei==0): temp_trace[0].d =0.97
+                        if(ei==1): temp_trace[-1].d=0.97
+
                 self.BEMobj.BEs_trace.append(temp_trace)
                 self.mesh_nodes.append(added_nodes)
             
@@ -382,7 +393,23 @@ class BEM_2DMesh:
 
         #Point source
         #plt.scatter(*np.asarray(self.Pts_w).T,s=20,color='red')
-        
+
+        #Trace elements
+        if (self.TraceOn):
+            BEs_pts = []
+            BEs_endpts = []
+            for t in self.BEMobj.BEs_trace:
+                for BE_t in t:
+                    BEs_endpts.append((BE_t.xa, BE_t.ya))
+                    for j in range(BE_t.ndof):
+                        BEs_pts.append(BE_t.get_node(j))
+                BEs_endpts.append((t[-1].xb, t[-1].yb))
+            
+            plt.plot(*np.asarray(BEs_pts).T, 'go', lw=1, markersize=node_size,
+                     label=str(self.Ne_trace) + ' Trace Elements ')
+            plt.scatter(*np.asarray(BEs_endpts).T, s=80, marker="x", c='g', alpha=0.8,
+            label='Mesh Nodes')
+
         #Boundary elements
         BEs_pts=[]
         BEs_endpts=[]
@@ -393,22 +420,6 @@ class BEM_2DMesh:
         plt.plot(*np.asarray(BEs_pts).T, 'bo', lw=1, markersize=node_size,
                  label=str(self.Ne_edge)+' Boundary Elements ')
         plt.scatter(*np.asarray(BEs_endpts).T, s=80,marker="x", c='b', alpha=0.8)
-
-        #Trace elements
-        if (self.TraceOn):
-            BEs_pts = []
-            BEs_endpts = []
-            for t in self.BEMobj.BEs_trace:
-                for BE_t in t:
-                    BEs_endpts.append((BE_t.xa, BE_t.ya))
-                    for j in range(BE.ndof):
-                        BEs_pts.append(BE_t.get_node(j))
-                BEs_endpts.append((t[-1].xb, t[-1].yb))
-            
-            plt.plot(*np.asarray(BEs_pts).T, 'go', lw=1, markersize=node_size,
-                     label=str(self.Ne_trace) + ' Trace Elements ')
-            plt.scatter(*np.asarray(BEs_endpts).T, s=80, marker="x", c='g', alpha=0.8,
-            label='Mesh Nodes')
 
         #Source nodes
         if(len(self.Pts_s)>0):
@@ -442,12 +453,12 @@ class BEM_2DMesh:
 
 
         if(legend): plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-        plt.title('BEM Mesh')
+        #plt.title('BEM Mesh')
         plt.xlabel('x(m)')
         plt.ylabel('y(m)')
 
         #extend the margin
-        plot_margin = space
+        plot_margin = space*0.8
         x0, x1, y0, y1 = plt.axis()
         plt.axis((x0 - plot_margin,
           x1 + plot_margin,
@@ -459,20 +470,99 @@ class BEM_2DMesh:
         if(img_fname is not None): 
             #plt.tight_layout()
             plt.savefig(img_fname,dpi=300,bbox_inches='tight')
-        plt.show()
 
 
 
     ###########Auxiliary Modes################
-    def Split_ByIntersections(self,Pts_e,Pts_t):
-        """Split the edge or trace by their intersections
+    def checkOpenEnds(self,Pts_e,Pts_t):
+        """Check trace edge intersection modes
 
         Arguments
         ---------
         xa, ya -- Cartesian coordinates of the first start-point.
 
         Author:Bin Wang(binwang.0213@gmail.com)
-        Date: July. 2017
+        Date: Nov. 2021
+        """
+        Edge_lines=Polygon2NodePair(Pts_e)
+        Trace_lines=Pts_t
+
+        self.TraceOpenEnds=np.ones([len(Trace_lines),2],dtype=np.int)
+        
+        #check trace-edge connection (T type connection)
+        for ei,edge in enumerate(Edge_lines):
+            for ti, trace in enumerate(Trace_lines):       
+                if(LineSegIntersect2(edge, trace)):#Found Intersection Line
+                    Pts_isect = LineIntersect(edge,trace)
+                    length = calcDist(trace[0],trace[1])
+                    if( calcDist(trace[0],Pts_isect) <  1e-2*length ):
+                        self.TraceOpenEnds[ti][0] = 0
+                    else:
+                        self.TraceOpenEnds[ti][1] = 0
+                    
+                    # print("Found Intersection-Edge", ei,
+                    #     "Trace", ti, '@', Pts_isect,'Trace=',trace,'OpenEnds',self.TraceOpenEnds[ti])
+        
+        #print(f"Found {np.sum(self.TraceOpenEnds)} open ends for traces.")
+        #print(self.TraceOpenEnds)
+
+        #check trace-trace connection (L type connection)
+        NumTraces = len(Trace_lines)
+        for ti in range(NumTraces-1):
+            for tj in range(ti+1,NumTraces):
+                trace_i = Trace_lines[ti]
+                trace_j = Trace_lines[tj]
+                
+                for i in range(2):
+                    if( point_in_line(trace_i[i],trace_j[0],trace_j[1]) ):
+                        self.TraceOpenEnds[ti][i]=0
+                        #print("Found Intersection-Trace Pair", (ti,tj),
+                        #    '@', trace_i[i],'Trace=',trace_i,trace_j)
+
+                    if( point_in_line(trace_j[i],trace_i[0],trace_i[1]) ):
+                        self.TraceOpenEnds[tj][i]=0
+                
+
+                # if(LineSegIntersect2(Trace_lines[ti], Trace_lines[tj])):#Found Intersection Line
+                #     trace_i = Trace_lines[ti]
+                #     trace_j = Trace_lines[tj]
+
+                #     Pts_isect = LineIntersect(trace_i,trace_j)
+                    
+                #     print("Found Intersection-Trace Pair", (ti,tj),
+                #           '@', Pts_isect,'Trace=',trace,
+                #           'OpenEnds i',self.TraceOpenEnds[ti],
+                #           'OpenEnds j',self.TraceOpenEnds[tj])
+
+                #     #Fix round end connection
+                #     for t in [ti,tj]:
+                #         trace = Trace_lines[t]
+                #         length = calcDist(trace[0],trace[1])
+                #         if( calcDist(trace[0],Pts_isect) <  1e-2*length ):
+                #             self.TraceOpenEnds[t][0] = 0
+                #         else:
+                #             self.TraceOpenEnds[t][1] = 0
+                    
+                #     # print('OpenEnds i',self.TraceOpenEnds[ti],
+                #     #        'OpenEnds j',self.TraceOpenEnds[tj])
+        
+        print(f"Found {np.sum(self.TraceOpenEnds)} open ends for traces.")
+        #print(self.TraceOpenEnds)
+
+        return self.TraceOpenEnds
+
+
+
+
+    def Split_EdgeTrace(self,Pts_e,Pts_t):
+        """Split edge by edge - trace intersections
+
+        Arguments
+        ---------
+        xa, ya -- Cartesian coordinates of the first start-point.
+
+        Author:Bin Wang(binwang.0213@gmail.com)
+        Date: Nov. 2021
         """
         Edge_lines=Polygon2NodePair(Pts_e)
         Trace_lines=Pts_t
@@ -480,20 +570,87 @@ class BEM_2DMesh:
         #Split edge first
         New_Pts_e=[]
         for ei,edge in enumerate(Edge_lines):
-            New_Pts_e.append(edge[0])
+            New_Pts=[edge[0]]
+            InsertRefDist=[0]
             for ti, trace in enumerate(Trace_lines):                
                 if(LineSegIntersect2(edge, trace)):#Found Intersection Line
                     Pts_isect = LineIntersect(edge,trace)
-                    print("Found Intersection-Edge", ei,
-                          "Trace", ti, '@', Pts_isect)
-                    New_Pts_e.append(Pts_isect)
+                    New_Pts.append(Pts_isect)
+                    InsertRefDist.append(calcDist(Pts_isect,edge[0]))
+                    #print("Found Intersection-Edge", ei,
+                    #      "Trace", ti, '@', Pts_isect,'Dist=',InsertRefDist[-1])
+            #New_Pts.append(edge[1])
+            #InsertRefDist+=[calcDist(edge[0],edge[1])]
+            #print(New_Pts,InsertRefDist)
 
+            #Sort nodes based on distance from start pts
+            #https://stackoverflow.com/questions/6618515/sorting-list-based-on-values-from-another-list
+            New_Pts=[x for _, x in sorted(zip(InsertRefDist, New_Pts))]
+            New_Pts_e+=New_Pts
+            #print(New_Pts)
         
+        return New_Pts_e
+    
+    def Split_TraceTrace(self,Pts_t):
+        """Split trace by trace - trace intersections
 
-        #Split edge and trace by intersections
+        Arguments
+        ---------
+        xa, ya -- Cartesian coordinates of the first start-point.
+
+        Author:Bin Wang(binwang.0213@gmail.com)
+        Date: Nov. 2021
+        """
+        Trace_lines=Pts_t
+
+        #Split trace and trace by intersections
         New_Pts_t = Split_IntersectLines(Trace_lines)
 
-        return New_Pts_e,New_Pts_t
+        return New_Pts_t
+
+
+    # def Split_ByIntersections(self,Pts_e,Pts_t):
+    #     """Split the edge or trace by their intersections
+
+    #     Arguments
+    #     ---------
+    #     xa, ya -- Cartesian coordinates of the first start-point.
+
+    #     Author:Bin Wang(binwang.0213@gmail.com)
+    #     Date: July. 2017
+    #     """
+    #     Edge_lines=Polygon2NodePair(Pts_e)
+    #     Trace_lines=Pts_t
+
+    #     #Split edge first
+    #     New_Pts_e=[]
+    #     for ei,edge in enumerate(Edge_lines):
+    #         New_Pts=[edge[0]]
+    #         InsertRefDist=[0]
+    #         for ti, trace in enumerate(Trace_lines):                
+    #             if(LineSegIntersect2(edge, trace)):#Found Intersection Line
+    #                 Pts_isect = LineIntersect(edge,trace)
+    #                 New_Pts.append(Pts_isect)
+    #                 InsertRefDist.append(calcDist(Pts_isect,edge[0]))
+    #                 #print("Found Intersection-Edge", ei,
+    #                 #      "Trace", ti, '@', Pts_isect,'Dist=',InsertRefDist[-1])
+    #         #New_Pts.append(edge[1])
+    #         #InsertRefDist+=[calcDist(edge[0],edge[1])]
+    #         #print(New_Pts,InsertRefDist)
+
+    #         #Sort nodes based on distance from start pts
+    #         #https://stackoverflow.com/questions/6618515/sorting-list-based-on-values-from-another-list
+    #         New_Pts=[x for _, x in sorted(zip(InsertRefDist, New_Pts))]
+    #         New_Pts_e+=New_Pts
+    #         #print(New_Pts)
+
+    #     print(f"Found {len(New_Pts_e)-len(Pts_e)} Intersection-Edge")
+
+
+    #     #Split trace and trace by intersections
+    #     New_Pts_t = Split_IntersectLines(Trace_lines)
+
+    #     return New_Pts_e,New_Pts_t
 
     def Append_Line(self, Pts_a=(0, 0), Pts_b=(0, 0), Nbd=1, panels=[], bd_marker=0, Type="Quad", refinement="linspace"):
         """Creates a BE along a line boundary. Anticlock wise, it decides the outward normal direction

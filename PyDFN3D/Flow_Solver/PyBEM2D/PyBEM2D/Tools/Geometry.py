@@ -271,7 +271,7 @@ def Line2Line(xa,ya,xb,yb,xc,yc,xd,yd):
     xd=newX
     #determine parallel
     if (yc==yd):
-        print("Error:Parallel line")
+        #print("Error:Parallel line")
         return 0
     #(4) Intersection point
     ABpos=xd+(xc-xd)*yd/(yd-yc)
