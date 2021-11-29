@@ -245,7 +245,26 @@ def LineIntersect(line1=((0,0),(1,0)),line2=((1,0),(1,1))):
     xb,yb=line1[1][0],line1[1][1]
     xc,yc=line2[0][0],line2[0][1]
     xd,yd=line2[1][0],line2[1][1]
+
+    #special case of connected line
+    connectPts = connectLine(line1,line2)
+    if( connectPts ): return connectPts
+
     return Line2Line(xa,ya,xb,yb,xc,yc,xd,yd)
+
+def connectLine(line1=((0,0),(1,0)),line2=((1,0),(1,1))):
+    #Check if lines are overlaped
+    if point_in_line(line1[0], line2[0], line2[1]):
+        return line1[0]
+    if point_in_line(line1[1], line2[0], line2[1]):
+        return line1[1]
+    if point_in_line(line2[0], line1[0], line1[1]):
+        return line2[0]
+    if point_in_line(line2[1], line1[0], line1[1]):
+        return line2[1]
+    
+    return 0
+
 
 def Line2Line(xa,ya,xb,yb,xc,yc,xd,yd):
     #http://alienryderflex.com/intersect/

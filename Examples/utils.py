@@ -196,7 +196,7 @@ def plotTables(X,Y,XLable='',YLabel='',DataNames=[],Title='',
     plt.tight_layout(pad=0.7)
     if(img_fname is not None):
         plt.savefig(img_fname, bbox_inches='tight')
-    plt.show()
+    #plt.show()
 
 
 def smooth(y, x,windows,plot=False,xlim=[],ylim=[]): #moving average

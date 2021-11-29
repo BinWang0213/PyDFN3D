@@ -363,7 +363,7 @@ class BEM_2DPostprocess:
                 ax.use_sticky_edges = False
                 ax.margins(0.05)
 
-        ax.plot([0,1.0],[0.59,0.59],'r-')
+        #ax.plot([0,1.0],[0.59,0.59],'r-')
 
         fig.tight_layout()
         #Give some margin for velocity field

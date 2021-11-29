@@ -182,7 +182,8 @@ class BEM_2DMesh:
         #if(geo_check): Pts_e, Pts_t = self.Split_ByIntersections(Pts_e, Pts_t)
         if(split_edge): Pts_e = self.Split_EdgeTrace(Pts_e,Pts_t)
         if(split_trace): Pts_t = self.Split_TraceTrace(Pts_t)
-        self.TraceOpenEnds = self.checkOpenEnds(Pts_e,Pts_t)
+        self.TraceOpenEnds,self.EdgeXTraceEnds = self.checkOpenEnds(Pts_e,Pts_t)
+
 
         #Collect basic geometric info
         self.Pts_e=Pts_e
@@ -195,6 +196,9 @@ class BEM_2DMesh:
         self.TraceStartID=self.Num_boundary
         self.SourceStartID=self.Num_boundary + self.Num_trace
 
+        # print(self.Num_boundary)
+        # for i in range(self.Num_boundary):
+        #     print(i,self.EdgeXTraceEnds[i,:])
 
         if(Ne_edge is not None):
             self.h_edge=self.NumEle2LenEle(Ne_edge)
@@ -224,9 +228,20 @@ class BEM_2DMesh:
                 Node_next=self.Pts_e[i+1]
             Ne_edge=int(np.ceil(calcDist(Node,Node_next)/self.h_edge))
             self.NumE_bd.append(Ne_edge)
-            
+
+            ei_start = len(self.BEMobj.BEs_edge)
             added_nodes=self.Append_Line(Node,Node_next,Ne_edge,self.BEMobj.BEs_edge,
                                          bd_marker=bd_marker_id,Type=Type)
+            ei_end = len(self.BEMobj.BEs_edge)-1
+            #using continous element in trace-edge touching line
+            #print(len(self.BEMobj.BEs_edge), ei_start, ei_end)
+            for ei,end in enumerate(self.EdgeXTraceEnds[i]):
+                    if(np.any(end)):
+                        #print(f"Trace {ti} has open ends",self.TraceOpenEnds[ti])
+                        if(ei==0): self.BEMobj.BEs_edge[ei_start].d =0.97  #0.97 is best for trace open end
+                        if(ei==1): self.BEMobj.BEs_edge[ei_end].d=0.97
+            
+
             self.mesh_nodes.append(added_nodes)
             bd_marker_id+=1
         
@@ -257,11 +272,12 @@ class BEM_2DMesh:
                 added_nodes=self.Append_Line(Node,Node_next,Ne_trace,temp_trace,
                                              bd_marker=bd_marker_id, 
                                              Type=Type)#, refinement="cosspace")  # fracture always 0 flux on edge
-                #Using continous element on open trace edge (significantly improve the accurancy)
+                
+                #Using 'continous' element on open trace edge (significantly improve the accurancy)
                 for ei,end in enumerate(self.TraceOpenEnds[ti]):
                     if(np.any(end)):
-                        print(f"Trace {ti} has open ends",self.TraceOpenEnds[ti])
-                        if(ei==0): temp_trace[0].d =0.97
+                        #print(f"Trace {ti} has open ends",self.TraceOpenEnds[ti])
+                        if(ei==0): temp_trace[0].d =0.97  #0.97 is best for trace open end
                         if(ei==1): temp_trace[-1].d=0.97
 
                 self.BEMobj.BEs_trace.append(temp_trace)
@@ -488,41 +504,64 @@ class BEM_2DMesh:
         Trace_lines=Pts_t
 
         self.TraceOpenEnds=np.ones([len(Trace_lines),2],dtype=np.int)
-        
+        self.EdgeXTraceEnds=np.zeros([len(Edge_lines),2],dtype=np.int)
+
         #check trace-edge connection (T type connection)
         for ei,edge in enumerate(Edge_lines):
-            for ti, trace in enumerate(Trace_lines):       
-                if(LineSegIntersect2(edge, trace)):#Found Intersection Line
-                    Pts_isect = LineIntersect(edge,trace)
+            for ti, trace in enumerate(Trace_lines):
+                Pts_isect = LineIntersect(edge,trace)
+                #if(ei==11 and ti>16 and ti<20): print(f'Testing {ei} edge{edge} {ti} trace{trace} X {Pts_isect}...')
+                isIntersect = False
+                if(Pts_isect):
+                    isIntersect = point_in_line(Pts_isect, trace[0],trace[1]) and  point_in_line(Pts_isect, edge[0],edge[1])
+
+                if(isIntersect): #Found Intersection Line
+                #if(LineSegIntersect2(edge, trace)):#Found Intersection Line
+                    #Pts_isect = LineIntersect(edge,trace)
                     length = calcDist(trace[0],trace[1])
-                    if( calcDist(trace[0],Pts_isect) <  1e-2*length ):
-                        self.TraceOpenEnds[ti][0] = 0
-                    else:
-                        self.TraceOpenEnds[ti][1] = 0
                     
-                    # print("Found Intersection-Edge", ei,
-                    #     "Trace", ti, '@', Pts_isect,'Trace=',trace,'OpenEnds',self.TraceOpenEnds[ti])
-        
+                    # #check open trace ends
+                    # if( calcDist(trace[0],Pts_isect) <  1e-2*length ):
+                    #     self.TraceOpenEnds[ti][0] = 0
+                    # else:
+                    #     self.TraceOpenEnds[ti][1] = 0
+                    
+                    #check touching edge ends
+                    if( calcDist(edge[0],Pts_isect) <  1e-2*length ):
+                        self.EdgeXTraceEnds[ei][0] = 1
+                    else:
+                        self.EdgeXTraceEnds[ei][1] = 1
+
+
+                    #print("Found Intersection-Edge", ei,
+                    #    "Trace", ti, '@', Pts_isect,'Trace=',trace,'OpenEnds',self.TraceOpenEnds[ti])
+
+                    if(ei==11):
+                        print("Found Intersection-Edge", ei,
+                            "Trace", ti, '@', Pts_isect,'Trace=',trace,'Edge=',edge,
+                            'XEnds',self.EdgeXTraceEnds[ei],'OpenEnds',self.TraceOpenEnds[ti])
+
         #print(f"Found {np.sum(self.TraceOpenEnds)} open ends for traces.")
         #print(self.TraceOpenEnds)
 
         #check trace-trace connection (L type connection)
-        NumTraces = len(Trace_lines)
-        for ti in range(NumTraces-1):
-            for tj in range(ti+1,NumTraces):
-                trace_i = Trace_lines[ti]
-                trace_j = Trace_lines[tj]
+        # NumTraces = len(Trace_lines)
+        # for ti in range(NumTraces-1):
+        #     for tj in range(ti+1,NumTraces):
+        #         trace_i = Trace_lines[ti]
+        #         trace_j = Trace_lines[tj]
                 
-                for i in range(2):
-                    if( point_in_line(trace_i[i],trace_j[0],trace_j[1]) ):
-                        self.TraceOpenEnds[ti][i]=0
-                        #print("Found Intersection-Trace Pair", (ti,tj),
-                        #    '@', trace_i[i],'Trace=',trace_i,trace_j)
+        #         for i in range(2):
+        #             if( point_in_line(trace_i[i],trace_j[0],trace_j[1]) ):
+        #                 self.TraceOpenEnds[ti][i]=0
+        #                 #print("Found Intersection-Trace Pair", (ti,tj),
+        #                 #    '@', trace_i[i],'Trace=',trace_i,trace_j)
 
-                    if( point_in_line(trace_j[i],trace_i[0],trace_i[1]) ):
-                        self.TraceOpenEnds[tj][i]=0
+        #             if( point_in_line(trace_j[i],trace_i[0],trace_i[1]) ):
+        #                 self.TraceOpenEnds[tj][i]=0
                 
 
+                #debug . .. 
                 # if(LineSegIntersect2(Trace_lines[ti], Trace_lines[tj])):#Found Intersection Line
                 #     trace_i = Trace_lines[ti]
                 #     trace_j = Trace_lines[tj]
@@ -547,9 +586,9 @@ class BEM_2DMesh:
                 #     #        'OpenEnds j',self.TraceOpenEnds[tj])
         
         print(f"Found {np.sum(self.TraceOpenEnds)} open ends for traces.")
-        #print(self.TraceOpenEnds)
+        print(f"Found {np.sum(self.EdgeXTraceEnds)} traceXedge ends for traces.")
 
-        return self.TraceOpenEnds
+        return self.TraceOpenEnds,self.EdgeXTraceEnds
 
 
 
